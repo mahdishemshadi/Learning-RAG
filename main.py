@@ -1,4 +1,6 @@
 import os
+import re
+
 import fitz
 import requests
 
@@ -32,6 +34,22 @@ def pdf_exists(file_path: str, file_link: str):
     else:
         print("File exists.")
 
+def punctuation_formatting(text: str) -> str:
+    """
+    Find all statements that end with ! or ? (including combinations) and replace them with periods.
+
+    Params:
+        text(str): input text to format.
+
+    Return:
+        str: text with ! and ? replaced by periods.
+    """
+
+    pattern = r'[!?]+(?=\s|$)'
+    formatted_text = re.sub(pattern, '.', text)
+    
+    return formatted_text
+
 def text_formatter(text: str) -> str:
     """
     Replace all \n with space and delete all extra spaces from start and end of the text.
@@ -43,7 +61,8 @@ def text_formatter(text: str) -> str:
         str: formatted text.
     """
 
-    formatted_text = text.replace("\n", " ").strip()
+    formatted_text = punctuation_formatting(text)
+    formatted_text = formatted_text.replace("\n", " ").strip()
     return formatted_text
 
 
