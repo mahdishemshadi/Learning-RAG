@@ -7,7 +7,8 @@ import requests
 from tqdm.auto import tqdm
 
 
-page_offset = 41 # book main content starts from page 41 of pdf
+PAGE_OFFSET = 41 # book main content starts from page 41 of pdf
+CHAR_TO_TOKEN = 4
 file_name = "human-nutrition-text.pdf"
 file_url = "https://pressbooks.oer.hawaii.edu/humannutrition2/open/download?type=pdf"
 
@@ -84,8 +85,12 @@ def read_pdf(file_path: str) -> list[dict]:
     for page_number, page in tqdm(enumerate(pdf)):
         text = page.get_text()
         text = text_formatter(text)
-        temp = {"page_number": page_number - page_offset,
+        temp = {"page_number": page_number - PAGE_OFFSET,
                 "characters_count": len(text),
                 "words_count": len(text.split(" ")),
+                "sentences-count": len(text.split(". ")),
+                "token_count": len(text) / CHAR_TO_TOKEN,
+                "text": text
                 }
-
+        result.append(temp)
+    return result
