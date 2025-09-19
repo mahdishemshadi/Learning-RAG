@@ -10,6 +10,7 @@ from spacy.lang.en import English
 
 PAGE_OFFSET = 41 # book main content starts from page 41 of pdf
 CHAR_TO_TOKEN = 4
+SENTEMCE_CHUNK_SIZE = 10
 file_name = "human-nutrition-text.pdf"
 file_url = "https://pressbooks.oer.hawaii.edu/humannutrition2/open/download?type=pdf"
 
@@ -117,6 +118,10 @@ nlp.add_pipe("sentencizer")
 for item in tqdm(pages_and_text):
     item["sentences"] = list(nlp(item["text"]).sents)
     item["sentences_count_spacy"] = len(item["sentences"])
+
+for item in tqdm(pages_and_text):
+    item["sentence_chunks"] = split_page(item["sentences"], SENTEMCE_CHUNK_SIZE)
+    item["chunk_count"] = len(item["sentence_chunks"])
 
 random_pages = random.sample(pages_and_text, k=1)
 data = pd.DataFrame(pages_and_text)
