@@ -95,6 +95,20 @@ def read_pdf(file_path: str) -> list[dict]:
         result.append(temp)
     return result
 
+def split_page(page_sentences: list, chunk_size: int) -> list[list[str]]:
+    """
+    slices input list to another sub_lists with size chunk_size. last sub_list may have size less than chunk size.
+
+    Params:
+        page_sentences(list): contains all sentences of a page.
+        chunk_size(int): size of sub_lists
+    Returns:
+         list[list[str]]: a list contains sub_lists of sentences.
+    """
+
+    return [page_sentences[i: i+1] for i in range(0, len(page_sentences), chunk_size)]
+
+
 pages_and_text = read_pdf(file_name)
 
 nlp = English()
