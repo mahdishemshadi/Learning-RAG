@@ -4,13 +4,14 @@ import fitz
 import random
 import requests
 import pandas as pd
+from markdown_it.rules_block import paragraph
 
 from tqdm.auto import tqdm
 from spacy.lang.en import English
 
 PAGE_OFFSET = 41 # book main content starts from page 41 of pdf
 CHAR_TO_TOKEN = 4
-SENTEMCE_CHUNK_SIZE = 10
+SENTENCE_CHUNK_SIZE = 10
 file_name = "human-nutrition-text.pdf"
 file_url = "https://pressbooks.oer.hawaii.edu/humannutrition2/open/download?type=pdf"
 
@@ -107,22 +108,41 @@ def split_page(page_sentences: list, chunk_size: int) -> list[list[str]]:
          list[list[str]]: a list contains sub_lists of sentences.
     """
 
-    return [page_sentences[i: i+1] for i in range(0, len(page_sentences), chunk_size)]
+    page_sentences = [str(sentence) for sentence in page_sentences]
+    return [page_sentences[i: i + chunk_size] for i in range(0, len(page_sentences), chunk_size)]
 
 
 pages_and_text = read_pdf(file_name)
 
 nlp = English()
 nlp.add_pipe("sentencizer")
+pages_and_chunks = list()
 
 for item in tqdm(pages_and_text):
     item["sentences"] = list(nlp(item["text"]).sents)
     item["sentences_count_spacy"] = len(item["sentences"])
 
 for item in tqdm(pages_and_text):
-    item["sentence_chunks"] = split_page(item["sentences"], SENTEMCE_CHUNK_SIZE)
+    item["sentence_chunks"] = split_page(item["sentences"], SENTENCE_CHUNK_SIZE)
     item["chunk_count"] = len(item["sentence_chunks"])
 
-random_pages = random.sample(pages_and_text, k=1)
-data = pd.DataFrame(pages_and_text)
-print(data.describe().round(2))
+for item in tqdm(pages_and_text):
+    for sentence_chunk in item["sentence_chunks"]:
+        chunk = dict()
+        chunk["page_number"] = item["page_number"]
+
+        paragraph = "".join(sentence_chunk).replace("  ", " ").strip()
+        paragraph = re.sub(r'\.([A-Z])', r'. \1', paragraph)
+
+        chunk["paragraph"] = paragraph
+        chunk["char_count"] = len(paragraph)
+        chunk["word_count"] = [word for word in paragraph.split(" ")]
+        chunk["token_count"] = len(paragraph) / CHAR_TO_TOKEN
+
+        pages_and_chunks.append(chunk)
+
+
+# random_pages = random.sample(pages_and_text, k=1)
+# data = pd.DataFrame(pages_and_text)
+# print(data.describe().round(2))
+print(len(pages_and_chunks))
