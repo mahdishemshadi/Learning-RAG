@@ -8,11 +8,13 @@ from markdown_it.rules_block import paragraph
 
 from tqdm.auto import tqdm
 from spacy.lang.en import English
+from sentence_transformers import SentenceTransformer
 
 PAGE_OFFSET = 41 # book main content starts from page 41 of pdf
 CHAR_TO_TOKEN = 4
-SENTENCE_CHUNK_SIZE = 10
 MIN_TOKEN_LENGTH = 30
+SENTENCE_CHUNK_SIZE = 10
+EMBEDDING_MODEL_NAME = "all-mpnet-base-v2"
 file_name = "human-nutrition-text.pdf"
 file_url = "https://pressbooks.oer.hawaii.edu/humannutrition2/open/download?type=pdf"
 
@@ -117,6 +119,9 @@ pages_and_text = read_pdf(file_name)
 
 nlp = English()
 nlp.add_pipe("sentencizer")
+
+embedding_model = SentenceTransformer(model_name_or_path=EMBEDDING_MODEL_NAME, device="cpu")
+
 pages_and_chunks = list()
 
 for item in tqdm(pages_and_text):
