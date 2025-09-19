@@ -12,6 +12,7 @@ from spacy.lang.en import English
 PAGE_OFFSET = 41 # book main content starts from page 41 of pdf
 CHAR_TO_TOKEN = 4
 SENTENCE_CHUNK_SIZE = 10
+MIN_TOKEN_LENGTH = 30
 file_name = "human-nutrition-text.pdf"
 file_url = "https://pressbooks.oer.hawaii.edu/humannutrition2/open/download?type=pdf"
 
@@ -141,8 +142,12 @@ for item in tqdm(pages_and_text):
 
         pages_and_chunks.append(chunk)
 
-
 # random_pages = random.sample(pages_and_text, k=1)
-# data = pd.DataFrame(pages_and_text)
+data = pd.DataFrame(pages_and_chunks)
 # print(data.describe().round(2))
-print(len(pages_and_chunks))
+# print(len(pages_and_chunks))
+
+# for row in data[data["token_count"] <= MIN_TOKEN_LENGTH].sample(5).iterrows():
+#     print(f'Chunk token count: {row[1]["token_count"]} | Text: {row[1]["paragraph"]}')
+
+pages_and_chunks_main = data[data["token_count"] > MIN_TOKEN_LENGTH].to_dict(orient="records")
