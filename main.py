@@ -1,11 +1,12 @@
 import os
 import re
-
 import fitz
+import random
 import requests
+import pandas as pd
 
 from tqdm.auto import tqdm
-
+from spacy.lang.en import English
 
 PAGE_OFFSET = 41 # book main content starts from page 41 of pdf
 CHAR_TO_TOKEN = 4
@@ -48,7 +49,6 @@ def punctuation_formatting(text: str) -> str:
 
     pattern = r'[!?]+(?=\s|$)'
     formatted_text = re.sub(pattern, '.', text)
-    
     return formatted_text
 
 def text_formatter(text: str) -> str:
@@ -88,9 +88,22 @@ def read_pdf(file_path: str) -> list[dict]:
         temp = {"page_number": page_number - PAGE_OFFSET,
                 "characters_count": len(text),
                 "words_count": len(text.split(" ")),
-                "sentences-count": len(text.split(". ")),
+                "sentences_count": len(text.split(". ")),
                 "token_count": len(text) / CHAR_TO_TOKEN,
                 "text": text
                 }
         result.append(temp)
     return result
+
+pages_and_text = read_pdf(file_name)
+
+nlp = English()
+nlp.add_pipe("sentencizer")
+
+for item in tqdm(pages_and_text):
+    item["sentences"] = list(nlp(item["text"]).sents)
+    item["sentences_count_spacy"] = len(item["sentences"])
+
+random_pages = random.sample(pages_and_text, k=1)
+data = pd.DataFrame(pages_and_text)
+print(data.describe().round(2))
