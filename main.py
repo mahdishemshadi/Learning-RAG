@@ -15,6 +15,7 @@ CHAR_TO_TOKEN = 4
 MIN_TOKEN_LENGTH = 30
 SENTENCE_CHUNK_SIZE = 10
 EMBEDDING_MODEL_NAME = "all-mpnet-base-v2"
+DEVICE = "cpu"
 file_name = "human-nutrition-text.pdf"
 file_url = "https://pressbooks.oer.hawaii.edu/humannutrition2/open/download?type=pdf"
 
@@ -120,7 +121,7 @@ pages_and_text = read_pdf(file_name)
 nlp = English()
 nlp.add_pipe("sentencizer")
 
-embedding_model = SentenceTransformer(model_name_or_path=EMBEDDING_MODEL_NAME, device="cpu")
+embedding_model = SentenceTransformer(model_name_or_path=EMBEDDING_MODEL_NAME, device=DEVICE)
 
 pages_and_chunks = list()
 
