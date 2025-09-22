@@ -5,17 +5,23 @@ import random
 import requests
 import pandas as pd
 from markdown_it.rules_block import paragraph
+from pandas.core.interchange.from_dataframe import primitive_column_to_ndarray
 
 from tqdm.auto import tqdm
 from spacy.lang.en import English
 from sentence_transformers import SentenceTransformer
+from transformers.utils import logging
 
+logging.set_verbosity_info()
+logging.set_verbosity_debug()
+
+BATCH_SIZE = 32
 PAGE_OFFSET = 41 # book main content starts from page 41 of pdf
 CHAR_TO_TOKEN = 4
 MIN_TOKEN_LENGTH = 30
 SENTENCE_CHUNK_SIZE = 10
-EMBEDDING_MODEL_NAME = "all-mpnet-base-v2"
 DEVICE = "cpu"
+EMBEDDING_MODEL_NAME = "all-mpnet-base-v2"
 file_name = "human-nutrition-text.pdf"
 file_url = "https://pressbooks.oer.hawaii.edu/humannutrition2/open/download?type=pdf"
 
@@ -120,9 +126,7 @@ pages_and_text = read_pdf(file_name)
 
 nlp = English()
 nlp.add_pipe("sentencizer")
-
 embedding_model = SentenceTransformer(model_name_or_path=EMBEDDING_MODEL_NAME, device=DEVICE)
-
 pages_and_chunks = list()
 
 for item in tqdm(pages_and_text):
@@ -157,3 +161,5 @@ data = pd.DataFrame(pages_and_chunks)
 #     print(f'Chunk token count: {row[1]["token_count"]} | Text: {row[1]["paragraph"]}')
 
 pages_and_chunks_main = data[data["token_count"] > MIN_TOKEN_LENGTH].to_dict(orient="records")
+text_chunks = [item["paragraph"] for item in pages_and_chunks_main]
+text_chunks_embedding = embedding_model.encode(text_chunks, batch_size=BATCH_SIZE, convert_to_tensor=True)
