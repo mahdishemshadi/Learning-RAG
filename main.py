@@ -1,8 +1,10 @@
 import os
 import re
 import fitz
+import torch
 import random
 import requests
+import numpy as np
 import pandas as pd
 from markdown_it.rules_block import paragraph
 from pandas.core.interchange.from_dataframe import primitive_column_to_ndarray
@@ -20,10 +22,11 @@ PAGE_OFFSET = 41 # book main content starts from page 41 of pdf
 CHAR_TO_TOKEN = 4
 MIN_TOKEN_LENGTH = 30
 SENTENCE_CHUNK_SIZE = 10
-DEVICE = "cpu"
+
 file_name = "human-nutrition-text.pdf"
-EMBEDDING_MODEL_NAME = "all-mpnet-base-v2"
 EMBEDDED_TEXT_FILE_PATH = "embedded.csv"
+EMBEDDING_MODEL_NAME = "all-mpnet-base-v2"
+DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 file_url = "https://pressbooks.oer.hawaii.edu/humannutrition2/open/download?type=pdf"
 
 def pdf_exists(file_path: str, file_link: str):
@@ -159,4 +162,9 @@ text_chunks = [item["paragraph"] for item in pages_and_chunks_main]
 
 # embedded_text = embedding_model.encode(text_chunks, batch_size=BATCH_SIZE, convert_to_tensor=True)
 # embedded_text_df = pd.DataFrame(embedded_text).to_csv(EMBEDDED_TEXT_FILE_PATH)
-text_chunks_and_embedding_df_load = pd.read_csv("text_chunks_and_embeddings_df.csv")
+embedded_text = pd.read_csv("text_chunks_and_embeddings_df.csv")
+embedded_text["embedding"] = embedded_text["embedding"].apply(lambda x: np.fromstring(x.strip("[]"), sep=" "))
+embedded_pages_and_chunks = embedded_text.to_dict(orient="records")
+embeddings = torch.tensor(np.array(embedded_text["embedding"].to_list), dtype=torch.foat32).to(DEVICE)
+
+
