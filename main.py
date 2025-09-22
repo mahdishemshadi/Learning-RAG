@@ -2,7 +2,7 @@ import os
 import re
 import fitz
 import torch
-import random
+import textwrap
 import requests
 import numpy as np
 import pandas as pd
@@ -129,6 +129,9 @@ def split_page(page_sentences: list, chunk_size: int) -> list[list[str]]:
     page_sentences = [str(sentence) for sentence in page_sentences]
     return [page_sentences[i: i + chunk_size] for i in range(0, len(page_sentences), chunk_size)]
 
+def print_wrapped(text: str, wrap_length=80):
+    wrapped_text = textwrap.fill(text, wrap_length)
+    print(wrapped_text)
 
 pages_and_text = read_pdf(file_name)
 
@@ -179,3 +182,4 @@ print(f"Take {end_time - start_time:.5f} for array with length {len(embeddings)}
 
 top_results_dot_score = torch.topk(dot_score, k=5)
 print(top_results_dot_score)
+
