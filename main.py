@@ -11,8 +11,9 @@ from pandas.core.interchange.from_dataframe import primitive_column_to_ndarray
 
 from tqdm.auto import tqdm
 from spacy.lang.en import English
-from sentence_transformers import SentenceTransformer
 from transformers.utils import logging
+from time import perf_counter as timer
+from sentence_transformers import SentenceTransformer, util
 
 logging.set_verbosity_info()
 logging.set_verbosity_debug()
@@ -23,12 +24,15 @@ CHAR_TO_TOKEN = 4
 MIN_TOKEN_LENGTH = 30
 SENTENCE_CHUNK_SIZE = 10
 
+QUERY = "good foods for protein"
 file_name = "human-nutrition-text.pdf"
 EMBEDDED_TEXT_FILE_PATH = "embedded.csv"
 EMBEDDING_MODEL_NAME = "all-mpnet-base-v2"
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 file_url = "https://pressbooks.oer.hawaii.edu/humannutrition2/open/download?type=pdf"
 
+
+# TODO: There should be a new feature to fix probable typo or semantic mistakes in the query
 def pdf_exists(file_path: str, file_link: str):
     """
     Check if pdf file exists. If file does not exist, download it.
@@ -130,7 +134,7 @@ pages_and_text = read_pdf(file_name)
 
 nlp = English()
 nlp.add_pipe("sentencizer")
-# embedding_model = SentenceTransformer(model_name_or_path=EMBEDDING_MODEL_NAME, device=DEVICE)
+embedding_model = SentenceTransformer(model_name_or_path=EMBEDDING_MODEL_NAME, device=DEVICE)
 pages_and_chunks = list()
 
 for item in tqdm(pages_and_text):
@@ -165,6 +169,13 @@ text_chunks = [item["paragraph"] for item in pages_and_chunks_main]
 embedded_text = pd.read_csv("text_chunks_and_embeddings_df.csv")
 embedded_text["embedding"] = embedded_text["embedding"].apply(lambda x: np.fromstring(x.strip("[]"), sep=" "))
 embedded_pages_and_chunks = embedded_text.to_dict(orient="records")
-embeddings = torch.tensor(np.array(embedded_text["embedding"].to_list), dtype=torch.foat32).to(DEVICE)
+embeddings = torch.tensor(np.array(embedded_text["embedding"].to_list()), dtype=torch.float32).to(DEVICE)
 
+embedded_query = embedding_model.encode(QUERY, convert_to_tensor=True)
+start_time = timer()
+dot_score = util.dot_score(a=embedded_query, b=embeddings)[0]
+end_time = timer()
+print(f"Take {end_time - start_time:.5f} for array with length {len(embeddings)}")
 
+top_results_dot_score = torch.topk(dot_score, k=5)
+print(top_results_dot_score)
