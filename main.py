@@ -22,6 +22,7 @@ BATCH_SIZE = 32
 PAGE_OFFSET = 41 # book main content starts from page 41 of pdf
 CHAR_TO_TOKEN = 4
 MIN_TOKEN_LENGTH = 30
+ACCEPTABLE_ANSWERS = 3
 SENTENCE_CHUNK_SIZE = 10
 
 QUERY = "good foods for protein"
@@ -180,6 +181,13 @@ dot_score = util.dot_score(a=embedded_query, b=embeddings)[0]
 end_time = timer()
 print(f"Take {end_time - start_time:.5f} for array with length {len(embeddings)}")
 
-top_results_dot_score = torch.topk(dot_score, k=5)
-print(top_results_dot_score)
+top_results_dot_score = torch.topk(dot_score, k=ACCEPTABLE_ANSWERS)
 
+print(f"Query: {QUERY}")
+print("Results:")
+
+for score, index in zip(top_results_dot_score[0], top_results_dot_score[1]):
+     print(f"score: {score:.4f}")
+     print("Text:")
+     print_wrapped(embedded_pages_and_chunks[index]["sentence_chunk"])
+     print(f"Page number: {embedded_pages_and_chunks[index]["page_number"]}")
