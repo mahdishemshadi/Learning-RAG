@@ -21,8 +21,9 @@ CHAR_TO_TOKEN = 4
 MIN_TOKEN_LENGTH = 30
 SENTENCE_CHUNK_SIZE = 10
 DEVICE = "cpu"
-EMBEDDING_MODEL_NAME = "all-mpnet-base-v2"
 file_name = "human-nutrition-text.pdf"
+EMBEDDING_MODEL_NAME = "all-mpnet-base-v2"
+EMBEDDED_TEXT_FILE_PATH = "embedded.csv"
 file_url = "https://pressbooks.oer.hawaii.edu/humannutrition2/open/download?type=pdf"
 
 def pdf_exists(file_path: str, file_link: str):
@@ -126,7 +127,7 @@ pages_and_text = read_pdf(file_name)
 
 nlp = English()
 nlp.add_pipe("sentencizer")
-embedding_model = SentenceTransformer(model_name_or_path=EMBEDDING_MODEL_NAME, device=DEVICE)
+# embedding_model = SentenceTransformer(model_name_or_path=EMBEDDING_MODEL_NAME, device=DEVICE)
 pages_and_chunks = list()
 
 for item in tqdm(pages_and_text):
@@ -152,14 +153,10 @@ for item in tqdm(pages_and_text):
 
         pages_and_chunks.append(chunk)
 
-# random_pages = random.sample(pages_and_text, k=1)
 data = pd.DataFrame(pages_and_chunks)
-# print(data.describe().round(2))
-# print(len(pages_and_chunks))
-
-# for row in data[data["token_count"] <= MIN_TOKEN_LENGTH].sample(5).iterrows():
-#     print(f'Chunk token count: {row[1]["token_count"]} | Text: {row[1]["paragraph"]}')
-
 pages_and_chunks_main = data[data["token_count"] > MIN_TOKEN_LENGTH].to_dict(orient="records")
 text_chunks = [item["paragraph"] for item in pages_and_chunks_main]
-text_chunks_embedding = embedding_model.encode(text_chunks, batch_size=BATCH_SIZE, convert_to_tensor=True)
+
+# embedded_text = embedding_model.encode(text_chunks, batch_size=BATCH_SIZE, convert_to_tensor=True)
+# embedded_text_df = pd.DataFrame(embedded_text).to_csv(EMBEDDED_TEXT_FILE_PATH)
+text_chunks_and_embedding_df_load = pd.read_csv("text_chunks_and_embeddings_df.csv")
