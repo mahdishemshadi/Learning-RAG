@@ -33,6 +33,10 @@ EMBEDDING_MODEL_NAME = "all-mpnet-base-v2"
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 file_url = "https://pressbooks.oer.hawaii.edu/humannutrition2/open/download?type=pdf"
 
+nlp = English()
+nlp.add_pipe("sentencizer")
+embedding_model = SentenceTransformer(model_name_or_path=EMBEDDING_MODEL_NAME, device=DEVICE)
+pages_and_chunks = list()
 
 # TODO: There should be a new feature to fix probable typo or semantic mistakes in the query
 def pdf_exists(file_path: str, file_link: str):
@@ -134,12 +138,48 @@ def print_wrapped(text: str, wrap_length=80):
     wrapped_text = textwrap.fill(text, wrap_length)
     print(wrapped_text)
 
-pages_and_text = read_pdf(file_name)
+def retrieve_relevant_resources(query: str, embedded_book: torch.tensor, model: SentenceTransformer=embedding_model,
+                                n_resources_to_return: int=5, print_time: bool=True) -> tuple:
+    embedded_query = model.encode(query, convert_to_tensor=True)
 
-nlp = English()
-nlp.add_pipe("sentencizer")
-embedding_model = SentenceTransformer(model_name_or_path=EMBEDDING_MODEL_NAME, device=DEVICE)
-pages_and_chunks = list()
+    start_time = timer()
+    dot_score = util.dot_score(a=embedded_query, b=embedded_book)[0]
+    end_time = timer()
+
+    if print_time:
+        print(f"Take {end_time - start_time:.5f} for array with length {len(embeddings)}")
+
+    scores, indices = torch.topk(dot_score, k=n_resources_to_return)
+    return scores, indices
+
+def print_top_results_and_scores(query: str, embedded_book: torch.tensor, pages_and_chunks_embedded: list[dict]):
+
+    scores, indices = retrieve_relevant_resources(query, embedded_book)
+
+    print(f"Query: {QUERY}")
+    print("Results:")
+
+    for score, index in zip(scores, indices):
+        print(f"score: {score:.4f}")
+        print("Text:")
+        print_wrapped(pages_and_chunks_embedded[index]["sentence_chunk"])
+        print(f"Page number: {pages_and_chunks_embedded[index]["page_number"]}")
+
+    doc = fitz.open(file_name)
+    page = doc.load_page(int(scores[0] + PAGE_OFFSET))
+    img = page.get_pixmap(dpi=300)
+
+    doc.close()
+
+    img_array = np.frombuffer(img.samples_mv, dtype=np.uint8).reshape((img.h, img.w, img.n))
+    plt.figure(figsize=(13, 10))
+    plt.imshow(img_array)
+    plt.title(f"Query: '{QUERY}' | Most relevant page:")
+    plt.axis('off')
+    plt.show()
+
+
+pages_and_text = read_pdf(file_name)
 
 for item in tqdm(pages_and_text):
     item["sentences"] = list(nlp(item["text"]).sents)
@@ -175,32 +215,34 @@ embedded_text["embedding"] = embedded_text["embedding"].apply(lambda x: np.froms
 embedded_pages_and_chunks = embedded_text.to_dict(orient="records")
 embeddings = torch.tensor(np.array(embedded_text["embedding"].to_list()), dtype=torch.float32).to(DEVICE)
 
-embedded_query = embedding_model.encode(QUERY, convert_to_tensor=True)
-start_time = timer()
-dot_score = util.dot_score(a=embedded_query, b=embeddings)[0]
-end_time = timer()
-print(f"Take {end_time - start_time:.5f} for array with length {len(embeddings)}")
+# embedded_query = embedding_model.encode(QUERY, convert_to_tensor=True)
+# start_time = timer()
+# dot_score = util.dot_score(a=embedded_query, b=embeddings)[0]
+# end_time = timer()
+# print(f"Take {end_time - start_time:.5f} for array with length {len(embeddings)}")
 
-top_results_dot_score = torch.topk(dot_score, k=ACCEPTABLE_ANSWERS)
+# top_results_dot_score = torch.topk(dot_score, k=ACCEPTABLE_ANSWERS)
 
-print(f"Query: {QUERY}")
-print("Results:")
+# print(f"Query: {QUERY}")
+# print("Results:")
 
-for score, index in zip(top_results_dot_score[0], top_results_dot_score[1]):
-     print(f"score: {score:.4f}")
-     print("Text:")
-     print_wrapped(embedded_pages_and_chunks[index]["sentence_chunk"])
-     print(f"Page number: {embedded_pages_and_chunks[index]["page_number"]}")
+# for score, index in zip(top_results_dot_score[0], top_results_dot_score[1]):
+#      print(f"score: {score:.4f}")
+#      print("Text:")
+#      print_wrapped(embedded_pages_and_chunks[index]["sentence_chunk"])
+#      print(f"Page number: {embedded_pages_and_chunks[index]["page_number"]}")
 
-doc = fitz.open(file_name)
-page = doc.load_page(int(top_results_dot_score[1][0] + PAGE_OFFSET))
-img = page.get_pixmap(dpi=300)
+# doc = fitz.open(file_name)
+# page = doc.load_page(int(top_results_dot_score[1][0] + PAGE_OFFSET))
+# img = page.get_pixmap(dpi=300)
+#
+# doc.close()
+#
+# img_array = np.frombuffer(img.samples_mv, dtype=np.uint8).reshape((img.h, img.w, img.n))
+# plt.figure(figsize=(13, 10))
+# plt.imshow(img_array)
+# plt.title(f"Query: '{QUERY}' | Most relevant page:")
+# plt.axis('off')
+# plt.show()
 
-doc.close()
-
-img_array = np.frombuffer(img.samples_mv, dtype=np.uint8).reshape((img.h, img.w, img.n))
-plt.figure(figsize=(13, 10))
-plt.imshow(img_array)
-plt.title(f"Query: '{QUERY}' | Most relevant page:")
-plt.axis('off')
-plt.show()
+print_top_results_and_scores(QUERY, embeddings, embedded_pages_and_chunks)
