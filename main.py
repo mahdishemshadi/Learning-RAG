@@ -6,6 +6,7 @@ import textwrap
 import requests
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
 from markdown_it.rules_block import paragraph
 from pandas.core.interchange.from_dataframe import primitive_column_to_ndarray
 
@@ -86,7 +87,6 @@ def text_formatter(text: str) -> str:
     formatted_text = punctuation_formatting(text)
     formatted_text = formatted_text.replace("\n", " ").strip()
     return formatted_text
-
 
 def read_pdf(file_path: str) -> list[dict]:
     """
@@ -191,3 +191,16 @@ for score, index in zip(top_results_dot_score[0], top_results_dot_score[1]):
      print("Text:")
      print_wrapped(embedded_pages_and_chunks[index]["sentence_chunk"])
      print(f"Page number: {embedded_pages_and_chunks[index]["page_number"]}")
+
+doc = fitz.open(file_name)
+page = doc.load_page(int(top_results_dot_score[1][0] + PAGE_OFFSET))
+img = page.get_pixmap(dpi=300)
+
+doc.close()
+
+img_array = np.frombuffer(img.samples_mv, dtype=np.uint8).reshape((img.h, img.w, img.n))
+plt.figure(figsize=(13, 10))
+plt.imshow(img_array)
+plt.title(f"Query: '{QUERY}' | Most relevant page:")
+plt.axis('off')
+plt.show()
